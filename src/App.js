@@ -116,6 +116,7 @@ function App() {
         onRequestClose={toggleModal}
         className="about-modal"
         overlayClassName="about-modal-overlay"
+        ariaHideApp={false}
       >
         <button className="modal-close-btn" onClick={toggleModal}> <GrClose /></button>
         <form>
