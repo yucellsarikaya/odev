@@ -15,12 +15,8 @@ function App() {
   const [map, setMap] = useState()
   const typeSelect = "Polygon";
   let draw, snap;
-
-  const raster = new TileLayer({
-    source: new OSM(),
-  });
-
-  const kaynak = new VectorSource();
+  const [raster, setRaster] = useState(new TileLayer({ source: new OSM(), }))
+  const [kaynak, setKaynak] = useState(new VectorSource())
 
   const vector = new VectorLayer({
     source: kaynak,
@@ -46,12 +42,6 @@ function App() {
     const initialMap = new Map({
       target: mapRef.current,
       layers: [
-        // USGS Topo
-        new TileLayer({
-          source: new XYZ({
-            url: 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}',
-          })
-        }),
         raster,
         vector
       ],
@@ -75,13 +65,16 @@ function App() {
     map.addInteraction(draw);
     snap = new Snap({ source: kaynak });
     map.addInteraction(snap);
-    console.log(map)
   }
 
   const change = () => {
     map.addInteraction(modify)
     addInteractions()
   }
+
+  useEffect(() => {
+    console.log(kaynak) 
+  })
 
   return (
     <div>
