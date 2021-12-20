@@ -11,18 +11,20 @@ import { OSM } from 'ol/source';
 import { Circle as CircleStyle, Fill, Stroke, Style } from 'ol/style';
 import { Draw, Modify, Snap } from 'ol/interaction';
 function App() {
+  const [btnShow, setBtnShow] = useState(true)
   const mapRef = useRef();
   const [map, setMap] = useState()
   const typeSelect = "Polygon";
   let draw, snap;
   const [raster, setRaster] = useState(new TileLayer({ source: new OSM(), }))
   const [kaynak, setKaynak] = useState(new VectorSource())
+  const [modify, setModify] = useState(new Modify({ source: kaynak }))
 
   const vector = new VectorLayer({
     source: kaynak,
     style: new Style({
       fill: new Fill({
-        color: 'rgba(255, 255, 255, 0.2)',
+        color: 'rgba(255, 255, 255, 0.4)',
       }),
       stroke: new Stroke({
         color: '#ffcc33',
@@ -36,26 +38,6 @@ function App() {
       }),
     }),
   });
-
-  useEffect(() => {
-    // create map
-    const initialMap = new Map({
-      target: mapRef.current,
-      layers: [
-        raster,
-        vector
-      ],
-      view: new View({
-        projection: 'EPSG:3857',
-        center: [100, 100],
-        zoom: 6
-      })
-    })
-    // save map and vector layer references to state
-    setMap(initialMap)
-  }, [])
-
-  const modify = new Modify({ source: kaynak });
 
   const addInteractions = () => {
     draw = new Draw({
@@ -73,19 +55,46 @@ function App() {
   }
 
   useEffect(() => {
-    console.log(kaynak) 
-  })
+    // let features = vector.getSource().getFeatures()
+    // features.forEach(function (feature) {
+    //   console.log(feature.getGeometry().getCoordinates());
+    // });
+    //console.log(vector.getSource().addFeature())
+
+    kaynak.on('addfeature', function(evt) { //kaynak dinleniyor çizim bittiğin de konumunu 
+      var feature = evt.feature;
+      console.log(feature.getGeometry().getCoordinates())
+   }); 
+  },[])
+
+  const haritaGetir = () => {
+    setBtnShow(false)
+    // create map
+    const initialMap = new Map({
+      target: mapRef.current,
+      layers: [
+        raster,
+        vector
+      ],
+      view: new View({
+        projection: 'EPSG:3857',
+        center: [1171767.26555912, -106200.91208823415],
+        zoom: 6
+      })
+    })
+    // save map and vector layer references to state
+    setMap(initialMap)
+  }
 
   return (
     <div>
+      {
+        btnShow ? <button onClick={() => haritaGetir()}>Harita Getir</button> : " "
+      }
+      
       <div ref={mapRef} id="map" className="map" ></div>
-      <form>
-        <label>Geometry type &nbsp;</label>
-        <select>
-          <option value="Polygon">Polygon</option>
-        </select>
-      </form>
-      <button onClick={() => change()}>Button</button>
+      <label>Geometry type &nbsp;</label>
+      <button onClick={() => change()}>Polygon</button>
     </div>
   );
 }
