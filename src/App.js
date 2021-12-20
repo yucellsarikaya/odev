@@ -5,20 +5,26 @@ import View from 'ol/View'
 import TileLayer from 'ol/layer/Tile'
 import VectorLayer from 'ol/layer/Vector'
 import VectorSource from 'ol/source/Vector'
-import XYZ from 'ol/source/XYZ'
 import React, { useRef, useState, useEffect } from "react"
 import { OSM } from 'ol/source';
 import { Circle as CircleStyle, Fill, Stroke, Style } from 'ol/style';
 import { Draw, Modify, Snap } from 'ol/interaction';
+import Modal from 'react-modal';
+import { GrClose } from 'react-icons/gr';
+
 function App() {
+  const [modalIsOpen, setIsOpen] = useState(false);
   const [btnShow, setBtnShow] = useState(true)
   const mapRef = useRef();
   const [map, setMap] = useState()
-  const typeSelect = "Polygon";
+  let typeSelect = "Polygon";
   let draw, snap;
   const [raster, setRaster] = useState(new TileLayer({ source: new OSM(), }))
   const [kaynak, setKaynak] = useState(new VectorSource())
   const [modify, setModify] = useState(new Modify({ source: kaynak }))
+  var location;
+  var feature
+
 
   const vector = new VectorLayer({
     source: kaynak,
@@ -61,11 +67,12 @@ function App() {
     // });
     //console.log(vector.getSource().addFeature())
 
-    kaynak.on('addfeature', function(evt) { //kaynak dinleniyor çizim bittiğin de konumunu 
-      var feature = evt.feature;
-      console.log(feature.getGeometry().getCoordinates())
-   }); 
-  },[])
+    kaynak.on('addfeature', function (evt) { //kaynak dinleniyor çizim bittiğin de konum bilgilerini getirecek
+      feature = evt.feature;
+      location = feature.getGeometry().getCoordinates()
+      setIsOpen(!modalIsOpen)
+    });
+  }, [])
 
   const haritaGetir = () => {
     setBtnShow(false)
@@ -86,15 +93,42 @@ function App() {
     setMap(initialMap)
   }
 
+  const toggleModal = () => {
+    var a = kaynak.getFeatures(); //tüm features getirir
+    var b = a[a.length - 1]; //son features getirir
+    kaynak.removeFeature(b); // son featuresu siler
+    setIsOpen(!modalIsOpen)
+  }
+
   return (
     <div>
       {
-        btnShow ? <button onClick={() => haritaGetir()}>Harita Getir</button> : " "
+        btnShow ? <button onClick={() => haritaGetir()}>Haritayı Getir</button> : location
       }
-      
       <div ref={mapRef} id="map" className="map" ></div>
       <label>Geometry type &nbsp;</label>
       <button onClick={() => change()}>Polygon</button>
+      <button>Point(not)</button>
+      <button>LineString(not)</button>
+
+      <Modal
+        isOpen={modalIsOpen} //açık olup olmadığunu konrtol eder
+        onRequestClose={toggleModal}
+        className="about-modal"
+        overlayClassName="about-modal-overlay"
+      >
+        <button className="modal-close-btn" onClick={toggleModal}> <GrClose /></button>
+        <form>
+          <input placeholder='Şehir Giriniz' />
+          <br />
+          <input placeholder='İlçe Giriniz' />
+          <br />
+          <input placeholder='Mahalle Giriniz' />
+          <br />
+          <button>Polygon u kaydet</button>
+        </form>
+      </Modal>
+
     </div>
   );
 }
