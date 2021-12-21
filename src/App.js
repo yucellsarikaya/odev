@@ -129,8 +129,8 @@ function App() {
         featureProjection: 'EPSG:3857',
       });
       kaynak.addFeature(featuree)
-      //setKaynak(new VectorSource({ features: [featuree] }, console.log(element.wktString)))
     });
+    setIsOpen(false)
   }
 
 
