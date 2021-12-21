@@ -64,6 +64,7 @@ function App() {
   }
 
   const change = () => {
+    //map.getInteractions().forEach(x => x.setActive(true));
     map.addInteraction(modify)
     addInteractions()
   }
@@ -128,12 +129,18 @@ function App() {
         dataProjection: 'EPSG:3857',
         featureProjection: 'EPSG:3857',
       });
+      featuree.set('parselId' , element.parselId)
       kaynak.addFeature(featuree)
     });
     setIsOpen(false)
   }
   const edit = () => {
     map.getInteractions().forEach(x => x.setActive(false)); //Interactions özelliğini kapatır
+    map.on("click", function (e) {
+      map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
+        console.log(feature)
+      })
+    })
   }
   return (
     <div>
