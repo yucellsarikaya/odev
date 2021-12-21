@@ -132,8 +132,9 @@ function App() {
     });
     setIsOpen(false)
   }
-
-
+  const edit = () => {
+    map.getInteractions().forEach(x => x.setActive(false)); //Interactions özelliğini kapatır
+  }
   return (
     <div>
       {btnShow ? <button onClick={() => haritaGetir()}>Haritayı Getir</button> : location}
@@ -142,6 +143,7 @@ function App() {
       <button onClick={() => change()}>Polygon</button>
       <button>Point(not)</button>
       <button>LineString(not)</button>
+      <button onClick={() => edit()}>Yapı Edit</button>
       <Modal
         isOpen={modalIsOpen} //açık olup olmadığunu konrtol eder
         onRequestClose={toggleModal}
