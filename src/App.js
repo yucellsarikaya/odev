@@ -16,12 +16,10 @@ import { set } from 'ol/transform';
 import service from './service';
 
 function App() {
+  const mapRef = useRef();
   const [modalIsOpen, setIsOpen] = useState(false);
   const [btnShow, setBtnShow] = useState(true)
-  const mapRef = useRef();
   const [map, setMap] = useState()
-  let typeSelect = "Polygon";
-  let draw, snap;
   const [raster, setRaster] = useState(new TileLayer({ source: new OSM(), }))
   const [kaynak, setKaynak] = useState(new VectorSource())
   const [modify, setModify] = useState(new Modify({ source: kaynak }))
@@ -29,10 +27,12 @@ function App() {
   const [city, setCity] = useState()
   const [district, setDistrict] = useState()
   const [neighborhood, setNeighborhood] = useState()
+  const [parselList, setParselLists] = useState()
   let [wkt, setWkt] = useState("")
+  let typeSelect = "Polygon";
+  let draw, snap;
   var location;
   var feature
-
 
   const vector = new VectorLayer({
     source: kaynak,
@@ -74,7 +74,6 @@ function App() {
     //   console.log(feature.getGeometry().getCoordinates());
     // });
     //console.log(vector.getSource().addFeature())
-
     kaynak.on('addfeature', function (evt) { //kaynak dinleniyor çizim bittiğin de konum bilgilerini getirecek
       feature = evt.feature;
       location = feature.getGeometry().getCoordinates()
@@ -83,6 +82,7 @@ function App() {
       setIsOpen(!modalIsOpen)
     });
   }, [])
+
 
   const haritaGetir = () => {
     setBtnShow(false)
@@ -96,11 +96,12 @@ function App() {
       view: new View({
         projection: 'EPSG:3857',
         center: [1171767.26555912, -106200.91208823415],
-        zoom: 6
+        zoom: 0
       })
     })
     // save map and vector layer references to state
     setMap(initialMap)
+    list()
   }
 
   const toggleModal = () => {
@@ -116,17 +117,31 @@ function App() {
     setIsOpen(!modalIsOpen)
   }
 
+  useEffect(() => {
+    service.liste().then(result => { setParselLists(result.data) })
+  })
+
+  const list = () => {
+    service.liste().then(result => { setParselLists(result.data) })
+    parselList.forEach(element => {
+      const featuree = format.readFeature(element.wktString, {
+        dataProjection: 'EPSG:3857',
+        featureProjection: 'EPSG:3857',
+      });
+      kaynak.addFeature(featuree)
+      //setKaynak(new VectorSource({ features: [featuree] }, console.log(element.wktString)))
+    });
+  }
+
+
   return (
     <div>
-      {
-        btnShow ? <button onClick={() => haritaGetir()}>Haritayı Getir</button> : location
-      }
+      {btnShow ? <button onClick={() => haritaGetir()}>Haritayı Getir</button> : location}
       <div ref={mapRef} id="map" className="map" ></div>
       <label>Geometry type &nbsp;</label>
       <button onClick={() => change()}>Polygon</button>
       <button>Point(not)</button>
       <button>LineString(not)</button>
-
       <Modal
         isOpen={modalIsOpen} //açık olup olmadığunu konrtol eder
         onRequestClose={toggleModal}
@@ -154,7 +169,6 @@ function App() {
           <button onClick={() => save()}>Polygon u kaydet</button>
         </form>
       </Modal>
-
     </div>
   );
 }
