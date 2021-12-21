@@ -5,12 +5,15 @@ import View from 'ol/View'
 import TileLayer from 'ol/layer/Tile'
 import VectorLayer from 'ol/layer/Vector'
 import VectorSource from 'ol/source/Vector'
+import WKT from 'ol/format/WKT';
 import React, { useRef, useState, useEffect } from "react"
 import { OSM } from 'ol/source';
 import { Circle as CircleStyle, Fill, Stroke, Style } from 'ol/style';
 import { Draw, Modify, Snap } from 'ol/interaction';
 import Modal from 'react-modal';
 import { GrClose } from 'react-icons/gr';
+import { set } from 'ol/transform';
+import service from './service';
 
 function App() {
   const [modalIsOpen, setIsOpen] = useState(false);
@@ -22,6 +25,11 @@ function App() {
   const [raster, setRaster] = useState(new TileLayer({ source: new OSM(), }))
   const [kaynak, setKaynak] = useState(new VectorSource())
   const [modify, setModify] = useState(new Modify({ source: kaynak }))
+  const [format, setFormat] = useState(new WKT())
+  const [city, setCity] = useState()
+  const [district, setDistrict] = useState()
+  const [neighborhood, setNeighborhood] = useState()
+  let [wkt, setWkt] = useState("")
   var location;
   var feature
 
@@ -70,6 +78,8 @@ function App() {
     kaynak.on('addfeature', function (evt) { //kaynak dinleniyor çizim bittiğin de konum bilgilerini getirecek
       feature = evt.feature;
       location = feature.getGeometry().getCoordinates()
+      var x = format.writeFeature(feature);
+      setWkt(wkt = x)
       setIsOpen(!modalIsOpen)
     });
   }, [])
@@ -100,6 +110,12 @@ function App() {
     setIsOpen(!modalIsOpen)
   }
 
+  const save = () => {
+    let parsel = { parselIl: city, parselIlce: district, pareselMahalle: neighborhood, wktString: wkt }
+    service.create(parsel).then(() => console.log("başarılı")).catch(() => console.log("başarısız"))
+    setIsOpen(!modalIsOpen)
+  }
+
   return (
     <div>
       {
@@ -120,13 +136,22 @@ function App() {
       >
         <button className="modal-close-btn" onClick={toggleModal}> <GrClose /></button>
         <form>
-          <input placeholder='Şehir Giriniz' />
+          <input
+            placeholder='Şehir Giriniz'
+            onChange={e => setCity(e.target.value)}
+          />
           <br />
-          <input placeholder='İlçe Giriniz' />
+          <input
+            placeholder='İlçe Giriniz'
+            onChange={e => setDistrict(e.target.value)}
+          />
           <br />
-          <input placeholder='Mahalle Giriniz' />
+          <input
+            placeholder='Mahalle Giriniz'
+            onChange={e => setNeighborhood(e.target.value)}
+          />
           <br />
-          <button>Polygon u kaydet</button>
+          <button onClick={() => save()}>Polygon u kaydet</button>
         </form>
       </Modal>
 
