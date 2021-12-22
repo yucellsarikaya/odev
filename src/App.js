@@ -10,11 +10,8 @@ import React, { useRef, useState, useEffect } from "react"
 import { OSM } from 'ol/source';
 import { Circle as CircleStyle, Fill, Stroke, Style } from 'ol/style';
 import { Draw, Modify, Snap } from 'ol/interaction';
-import Modal from 'react-modal';
-import { GrClose } from 'react-icons/gr';
-import { set } from 'ol/transform';
 import service from './service';
-//import "semantic-ui-css/semantic.min.css"
+import { Button, Image, Form, Modal } from 'semantic-ui-react'
 
 function App() {
   const mapRef = useRef();
@@ -37,7 +34,6 @@ function App() {
   let draw, snap;
   var location;
   var feature
-
   const vector = new VectorLayer({
     source: kaynak,
     style: new Style({
@@ -56,7 +52,6 @@ function App() {
       }),
     }),
   });
-
   const addInteractions = () => {
     draw = new Draw({
       source: kaynak,
@@ -67,13 +62,14 @@ function App() {
     map.addInteraction(snap);
   }
 
+  useEffect(() => {
+    service.liste().then(result => { setParselLists(result.data) })
+  })
+
   const change = () => {
     //map.getInteractions().forEach(x => x.setActive(true));
     map.addInteraction(modify)
     addInteractions()
-  }
-
-  useEffect(() => {
     kaynak.on('addfeature', function (evt) { //kaynak dinleniyor çizim bittiğin de konum bilgilerini getirecek
       feature = evt.feature;
       location = feature.getGeometry().getCoordinates()
@@ -81,8 +77,8 @@ function App() {
       setWkt(wkt = x)
       setIsOpen(!modalIsOpen)
     });
-  }, [])
-
+    list()
+  }
 
   const haritaGetir = () => {
     setBtnShow(false)
@@ -108,7 +104,7 @@ function App() {
     var a = kaynak.getFeatures(); //tüm features getirir
     var b = a[a.length - 1]; //son features getirir
     kaynak.removeFeature(b); // son featuresu siler
-    setIsOpen(!modalIsOpen)
+    setIsOpen(!toggleModal)
   }
 
   const toggleModalFeature = () => {
@@ -118,13 +114,9 @@ function App() {
   const save = () => {
     let parsel = { parselIl: city, parselIlce: district, pareselMahalle: neighborhood, wktString: wkt }
     service.create(parsel).then(() => console.log("başarılı")).catch(() => console.log("başarısız"))
-    setIsOpen(!modalIsOpen)
+    setIsOpen(false)
     service.liste().then(result => { setParselLists(result.data) })
   }
-
-  useEffect(() => {
-    service.liste().then(result => { setParselLists(result.data) })
-  })
 
   const list = () => {
     service.liste().then(result => { setParselLists(result.data) })
@@ -140,7 +132,6 @@ function App() {
       featuree.set('wktString', element.wktString)
       kaynak.addFeature(featuree)
     });
-    setIsOpen(false)
   }
 
   const edit = () => {
@@ -158,13 +149,23 @@ function App() {
     })
   }
 
-  const deleteParsel = () => {
+  const deleteParsel = (e) => {
+    e.preventDefault(e);
     service.delete(parselId).then(() => console.log("silme başarılı")).catch(() => console.log("silme başarısız"))
+    kaynak.clear()
+    setIsOpenFeature(!modalIsOpenFeature)
+    service.liste().then(result => { setParselLists(result.data) })
+    list()
   }
 
-  const updateParsel = () => {
+  const updateParsel = (e) => {
+    e.preventDefault();
     let parsel = { parselId: parselId, parselIl: city, parselIlce: district, pareselMahalle: neighborhood, wktString: wktString }
     service.update(parsel).then(() => console.log("güncelleme başarılı")).catch(() => console.log("güncelleme başarısız"))
+    kaynak.clear()
+    setIsOpenFeature(!modalIsOpenFeature)
+    service.liste().then(result => { setParselLists(result.data) })
+    list()
   }
 
   return (
@@ -172,67 +173,83 @@ function App() {
       {btnShow ? <button onClick={() => haritaGetir()}>Haritayı Getir</button> : location}
       <div ref={mapRef} id="map" className="map" ></div>
       <label>Geometry type &nbsp;</label>
-      <button onClick={() => change()}>Polygon</button>
-      <button>Point(not)</button>
-      <button>LineString(not)</button>
-      <button onClick={() => edit()}>Yapı Edit</button>
+      <Button basic color='red' onClick={() => change()}>Polygon</Button>
+      <Button basic color='orange'>Point(not)</Button>
+      <Button basic color='purple'>LineString(not)</Button>
+      <Button basic color='yellow' onClick={() => edit()}>Yapı Edit</Button>
+
       <Modal
-        isOpen={modalIsOpen} //açık olup olmadığunu konrtol eder
-        onRequestClose={toggleModal}
-        className="about-modal"
-        overlayClassName="about-modal-overlay"
-        ariaHideApp={false}
+        size={"tiny"}
+        open={modalIsOpen}
       >
-        <button className="modal-close-btn" onClick={toggleModal}> <GrClose /></button>
-        <form>
-          <input
-            placeholder='Şehir Giriniz'
-            onChange={e => setCity(e.target.value)}
-          />
-          <br />
-          <input
-            placeholder='İlçe Giriniz'
-            onChange={e => setDistrict(e.target.value)}
-          />
-          <br />
-          <input
-            placeholder='Mahalle Giriniz'
-            onChange={e => setNeighborhood(e.target.value)}
-          />
-          <br />
-          <button onClick={() => save()}>Polygon u kaydet</button>
-        </form>
+        <Modal.Header>BELSİS</Modal.Header>
+        <Modal.Content image>
+          <Image size='medium' src='https://files.ulutek.com.tr/upload/file_manager/2020/9/UlutekFirmalar/belsis_logo_568ebe7b703e4e1f837a7fa11aeda979.jpg' wrapped />
+          <Modal.Description>
+            <p>Belsis işe dokanan çözümler?</p>
+          </Modal.Description>
+        </Modal.Content>
+        <Form>
+          <Form.Field>
+            <input
+              placeholder='Şehir Giriniz'
+              onChange={e => setCity(e.target.value)}
+            />
+          </Form.Field>
+          <Form.Field>
+            <input
+              placeholder='İlçe Giriniz'
+              onChange={e => setDistrict(e.target.value)}
+            />
+          </Form.Field>
+          <Form.Field>
+            <input
+              placeholder='Mahalle Giriniz'
+              onChange={e => setNeighborhood(e.target.value)}
+            />
+          </Form.Field>
+        </Form>
+        <Modal.Actions>
+          <Button primary onClick={() => save()}>Polygon u kaydet</Button>
+          <Button negative onClick={() => toggleModal()}> Kapat</Button>
+        </Modal.Actions>
       </Modal>
+
+
       <Modal
-        isOpen={modalIsOpenFeature} //açık olup olmadığunu konrtol eder
-        onRequestClose={toggleModalFeature}
-        className="about-modal"
-        overlayClassName="about-modal-overlay"
-        ariaHideApp={false}
+        onClose={toggleModalFeature}
+        size={"tiny"}
+        onOpen={() => toggleModalFeature}
+        open={modalIsOpenFeature}
       >
-        <button className="modal-close-btn" onClick={toggleModalFeature}> <GrClose /></button>
-        <form>
-          <input
-            placeholder='Şehir Giriniz'
-            value={city}
-            onChange={e => setCity(e.target.value)}
-          />
-          <br />
-          <input
-            placeholder='İlçe Giriniz'
-            value={district}
-            onChange={e => setDistrict(e.target.value)}
-          />
-          <br />
-          <input
-            placeholder='Mahalle Giriniz'
-            value={neighborhood}
-            onChange={e => setNeighborhood(e.target.value)}
-          />
-          <br />
-          <button onClick={() => updateParsel()}>Parseli i güncelle</button>
-          <button onClick={() => deleteParsel()}>Polygon u sil</button>
-        </form>
+        <Button className="modal-close-btn" onClick={toggleModalFeature}></Button>
+        <Form>
+          <Form.Field>
+            <input
+              placeholder='Şehir Giriniz'
+              value={city}
+              onChange={e => setCity(e.target.value)}
+            />
+          </Form.Field>
+          <Form.Field>
+            <input
+              placeholder='İlçe Giriniz'
+              value={district}
+              onChange={e => setDistrict(e.target.value)}
+            />
+          </Form.Field>
+          <Form.Field>
+            <input
+              placeholder='Mahalle Giriniz'
+              value={neighborhood}
+              onChange={e => setNeighborhood(e.target.value)}
+            />
+          </Form.Field>
+          <Modal.Actions>
+            <Button onClick={(e) => updateParsel(e)} primary>Parseli güncelle</Button>
+            <Button onClick={(e) => deleteParsel(e)} primary color='red'>Parseli sil</Button>
+          </Modal.Actions>
+        </Form>
       </Modal>
     </div>
   );
