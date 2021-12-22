@@ -14,19 +14,23 @@ import Modal from 'react-modal';
 import { GrClose } from 'react-icons/gr';
 import { set } from 'ol/transform';
 import service from './service';
+//import "semantic-ui-css/semantic.min.css"
 
 function App() {
   const mapRef = useRef();
   const [modalIsOpen, setIsOpen] = useState(false);
+  const [modalIsOpenFeature, setIsOpenFeature] = useState(false);
   const [btnShow, setBtnShow] = useState(true)
   const [map, setMap] = useState()
   const [raster, setRaster] = useState(new TileLayer({ source: new OSM(), }))
   const [kaynak, setKaynak] = useState(new VectorSource())
   const [modify, setModify] = useState(new Modify({ source: kaynak }))
   const [format, setFormat] = useState(new WKT())
+  const [parselId, setParselId] = useState()
   const [city, setCity] = useState()
   const [district, setDistrict] = useState()
   const [neighborhood, setNeighborhood] = useState()
+  const [wktString, setWktString] = useState()
   const [parselList, setParselLists] = useState()
   let [wkt, setWkt] = useState("")
   let typeSelect = "Polygon";
@@ -70,11 +74,6 @@ function App() {
   }
 
   useEffect(() => {
-    // let features = vector.getSource().getFeatures()
-    // features.forEach(function (feature) {
-    //   console.log(feature.getGeometry().getCoordinates());
-    // });
-    //console.log(vector.getSource().addFeature())
     kaynak.on('addfeature', function (evt) { //kaynak dinleniyor çizim bittiğin de konum bilgilerini getirecek
       feature = evt.feature;
       location = feature.getGeometry().getCoordinates()
@@ -112,10 +111,15 @@ function App() {
     setIsOpen(!modalIsOpen)
   }
 
+  const toggleModalFeature = () => {
+    setIsOpenFeature(!modalIsOpenFeature)
+  }
+
   const save = () => {
     let parsel = { parselIl: city, parselIlce: district, pareselMahalle: neighborhood, wktString: wkt }
     service.create(parsel).then(() => console.log("başarılı")).catch(() => console.log("başarısız"))
     setIsOpen(!modalIsOpen)
+    service.liste().then(result => { setParselLists(result.data) })
   }
 
   useEffect(() => {
@@ -129,19 +133,40 @@ function App() {
         dataProjection: 'EPSG:3857',
         featureProjection: 'EPSG:3857',
       });
-      featuree.set('parselId' , element.parselId)
+      featuree.set('parselId', element.parselId)
+      featuree.set('parselIl', element.parselIl)
+      featuree.set('parselIlce', element.parselIlce)
+      featuree.set('pareselMahalle', element.pareselMahalle)
+      featuree.set('wktString', element.wktString)
       kaynak.addFeature(featuree)
     });
     setIsOpen(false)
   }
+
   const edit = () => {
+    list()
     map.getInteractions().forEach(x => x.setActive(false)); //Interactions özelliğini kapatır
-    map.on("click", function (e) {
+    map.on("dblclick", function (e) {
       map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
-        console.log(feature)
+        setParselId(feature.values_.parselId)
+        setCity(feature.values_.parselIl)
+        setDistrict(feature.values_.parselIlce)
+        setNeighborhood(feature.values_.pareselMahalle)
+        setWktString(feature.values_.wktString)
+        setIsOpenFeature(!modalIsOpenFeature)
       })
     })
   }
+
+  const deleteParsel = () => {
+    service.delete(parselId).then(() => console.log("silme başarılı")).catch(() => console.log("silme başarısız"))
+  }
+
+  const updateParsel = () => {
+    let parsel = { parselId: parselId, parselIl: city, parselIlce: district, pareselMahalle: neighborhood, wktString: wktString }
+    service.update(parsel).then(() => console.log("güncelleme başarılı")).catch(() => console.log("güncelleme başarısız"))
+  }
+
   return (
     <div>
       {btnShow ? <button onClick={() => haritaGetir()}>Haritayı Getir</button> : location}
@@ -176,6 +201,37 @@ function App() {
           />
           <br />
           <button onClick={() => save()}>Polygon u kaydet</button>
+        </form>
+      </Modal>
+      <Modal
+        isOpen={modalIsOpenFeature} //açık olup olmadığunu konrtol eder
+        onRequestClose={toggleModalFeature}
+        className="about-modal"
+        overlayClassName="about-modal-overlay"
+        ariaHideApp={false}
+      >
+        <button className="modal-close-btn" onClick={toggleModalFeature}> <GrClose /></button>
+        <form>
+          <input
+            placeholder='Şehir Giriniz'
+            value={city}
+            onChange={e => setCity(e.target.value)}
+          />
+          <br />
+          <input
+            placeholder='İlçe Giriniz'
+            value={district}
+            onChange={e => setDistrict(e.target.value)}
+          />
+          <br />
+          <input
+            placeholder='Mahalle Giriniz'
+            value={neighborhood}
+            onChange={e => setNeighborhood(e.target.value)}
+          />
+          <br />
+          <button onClick={() => updateParsel()}>Parseli i güncelle</button>
+          <button onClick={() => deleteParsel()}>Polygon u sil</button>
         </form>
       </Modal>
     </div>
