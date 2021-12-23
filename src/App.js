@@ -29,11 +29,12 @@ function App() {
   const [neighborhood, setNeighborhood] = useState()
   const [wktString, setWktString] = useState()
   const [parselList, setParselLists] = useState()
+  const [test, setTest] = useState([])
   let [wkt, setWkt] = useState("")
   let typeSelect = "Polygon";
   let draw, snap;
   var location;
-  var feature
+  var feature;
   const vector = new VectorLayer({
     source: kaynak,
     style: new Style({
@@ -58,27 +59,26 @@ function App() {
       type: typeSelect,
     });
     map.addInteraction(draw);
+    draw.on('drawend', (evt) => { //kaynak dinleniyor çizim bittiğin de konum bilgilerini getirecek
+      feature = evt.feature;
+      setTest(evt.feature)
+      location = feature.getGeometry().getCoordinates()
+      var x = format.writeFeature(feature);
+      setWkt(wkt = x)
+      if (x) {
+        setIsOpen(!modalIsOpen)
+      }
+    });
     snap = new Snap({ source: kaynak });
     map.addInteraction(snap);
   }
 
-  useEffect(() => {
-    service.liste().then(result => { setParselLists(result.data) })
-  })
-
-  const change = () => {
-    //map.getInteractions().forEach(x => x.setActive(true));
-    map.addInteraction(modify)
-    addInteractions()
-    kaynak.on('addfeature', function (evt) { //kaynak dinleniyor çizim bittiğin de konum bilgilerini getirecek
-      feature = evt.feature;
-      location = feature.getGeometry().getCoordinates()
-      var x = format.writeFeature(feature);
-      setWkt(wkt = x)
-      setIsOpen(!modalIsOpen)
-    });
-    list()
-  }
+  // const change = () => {
+  //   map.getInteractions().forEach(x => x.setActive(true));
+  //   map.addInteraction(modify)
+  //   addInteractions()    
+  //   list()
+  // }
 
   const haritaGetir = () => {
     setBtnShow(false)
@@ -97,14 +97,17 @@ function App() {
     })
     // save map and vector layer references to state
     setMap(initialMap)
-    list()
+    initialMap.once("rendercomplete", function () {
+      list()
+    })
   }
 
   const toggleModal = () => {
+    debugger
     var a = kaynak.getFeatures(); //tüm features getirir
     var b = a[a.length - 1]; //son features getirir
     kaynak.removeFeature(b); // son featuresu siler
-    setIsOpen(!toggleModal)
+    setIsOpen(!modalIsOpen)
   }
 
   const toggleModalFeature = () => {
@@ -113,59 +116,95 @@ function App() {
 
   const save = () => {
     let parsel = { parselIl: city, parselIlce: district, pareselMahalle: neighborhood, wktString: wkt }
-    service.create(parsel).then(() => console.log("başarılı")).catch(() => console.log("başarısız"))
-    setIsOpen(false)
-    service.liste().then(result => { setParselLists(result.data) })
+    service.create(parsel).then((e) => {
+      debugger
+      setParselId("")
+      setCity("")
+      setDistrict("")
+      setNeighborhood("")
+      setWktString("")
+      test.set('parselId', e.data)
+      test.set('parselIl', city)
+      test.set('parselIlce', district)
+      test.set('pareselMahalle', neighborhood)
+      test.set('wktString', wkt)
+      console.log("başarılı", test)
+    }).catch(() =>
+      console.log("başarısız")
+    )
+    setIsOpen(!modalIsOpen)
+    //service.liste().then(result => { setParselLists(result.data) })
+    list()
   }
 
   const list = () => {
-    service.liste().then(result => { setParselLists(result.data) })
-    parselList.forEach(element => {
-      const featuree = format.readFeature(element.wktString, {
-        dataProjection: 'EPSG:3857',
-        featureProjection: 'EPSG:3857',
-      });
-      featuree.set('parselId', element.parselId)
-      featuree.set('parselIl', element.parselIl)
-      featuree.set('parselIlce', element.parselIlce)
-      featuree.set('pareselMahalle', element.pareselMahalle)
-      featuree.set('wktString', element.wktString)
-      kaynak.addFeature(featuree)
-    });
+    service.liste().then(result => {
+      setParselLists(result.data);
+      if (result.data && result.data.length > 0) {
+        result.data.forEach(element => {
+          if (element.wktString) {
+            const featuree = format.readFeature(element.wktString, {
+              dataProjection: 'EPSG:3857',
+              featureProjection: 'EPSG:3857',
+            });
+            featuree.set('parselId', element.parselId)
+            featuree.set('parselIl', element.parselIl)
+            featuree.set('parselIlce', element.parselIlce)
+            featuree.set('pareselMahalle', element.pareselMahalle)
+            featuree.set('wktString', element.wktString)
+            kaynak.addFeature(featuree)
+          }
+        });
+      }
+    })
+
   }
 
   const edit = () => {
-    list()
+    service.liste().then(result => { setParselLists(result.data) })
     map.getInteractions().forEach(x => x.setActive(false)); //Interactions özelliğini kapatır
     map.on("dblclick", function (e) {
-      map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
+      map.forEachFeatureAtPixel(e.pixel, function (feature) {
+        //tıklanılan featurenın bilgilerini alıyoruz
         setParselId(feature.values_.parselId)
         setCity(feature.values_.parselIl)
         setDistrict(feature.values_.parselIlce)
         setNeighborhood(feature.values_.pareselMahalle)
         setWktString(feature.values_.wktString)
         setIsOpenFeature(!modalIsOpenFeature)
+        console.log(feature.values_.wktString)
       })
     })
   }
 
   const deleteParsel = (e) => {
     e.preventDefault(e);
-    service.delete(parselId).then(() => console.log("silme başarılı")).catch(() => console.log("silme başarısız"))
-    kaynak.clear()
+    service.delete(parselId).then((e) => {
+      console.log("silme başarılı")
+      list()
+    }).catch(() => console.log("silme başarısız"))
     setIsOpenFeature(!modalIsOpenFeature)
-    service.liste().then(result => { setParselLists(result.data) })
-    list()
+    kaynak.clear()
   }
 
   const updateParsel = (e) => {
-    e.preventDefault();
     let parsel = { parselId: parselId, parselIl: city, parselIlce: district, pareselMahalle: neighborhood, wktString: wktString }
-    service.update(parsel).then(() => console.log("güncelleme başarılı")).catch(() => console.log("güncelleme başarısız"))
-    kaynak.clear()
+    service.update(parsel).then((e) => {
+      console.log("güncelleme başarılı")
+      setParselId("")
+      setCity("")
+      setDistrict("")
+      setNeighborhood("")
+      setWktString("")
+      test.set('parselId', e.data)
+      test.set('parselIl', city)
+      test.set('parselIlce', district)
+      test.set('pareselMahalle', neighborhood)
+      test.set('wktString', wkt)
+    }).catch(() => console.log("güncelleme başarısız"))
+    // kaynak.clear()
     setIsOpenFeature(!modalIsOpenFeature)
-    service.liste().then(result => { setParselLists(result.data) })
-    list()
+
   }
 
   return (
@@ -173,7 +212,7 @@ function App() {
       {btnShow ? <button onClick={() => haritaGetir()}>Haritayı Getir</button> : location}
       <div ref={mapRef} id="map" className="map" ></div>
       <label>Geometry type &nbsp;</label>
-      <Button basic color='red' onClick={() => change()}>Polygon</Button>
+      <Button basic color='red' onClick={() => addInteractions()}>Polygon</Button>
       <Button basic color='orange'>Point(not)</Button>
       <Button basic color='purple'>LineString(not)</Button>
       <Button basic color='yellow' onClick={() => edit()}>Yapı Edit</Button>
@@ -217,12 +256,10 @@ function App() {
 
 
       <Modal
-        onClose={toggleModalFeature}
         size={"tiny"}
-        onOpen={() => toggleModalFeature}
         open={modalIsOpenFeature}
       >
-        <Button className="modal-close-btn" onClick={toggleModalFeature}></Button>
+        <Button className="modal-close-btn" onClick={() => toggleModalFeature()}>Kapat</Button>
         <Form>
           <Form.Field>
             <input
@@ -245,11 +282,11 @@ function App() {
               onChange={e => setNeighborhood(e.target.value)}
             />
           </Form.Field>
-          <Modal.Actions>
-            <Button onClick={(e) => updateParsel(e)} primary>Parseli güncelle</Button>
-            <Button onClick={(e) => deleteParsel(e)} primary color='red'>Parseli sil</Button>
-          </Modal.Actions>
         </Form>
+        <Modal.Actions>
+          <Button onClick={(e) => updateParsel(e)} primary>Parseli güncelle</Button>
+          <Button onClick={(e) => deleteParsel(e)} primary color='red'>Parseli sil</Button>
+        </Modal.Actions>
       </Modal>
     </div>
   );
